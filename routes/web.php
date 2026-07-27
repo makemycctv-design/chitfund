@@ -72,6 +72,7 @@ Route::middleware(['auth', 'verified', 'user.type:staff'])
         Route::post('customers/{customer}/approve', [CustomerController::class, 'approveRegistration'])->name('customers.approve');
         Route::post('customers/{customer}/reject', [CustomerController::class, 'rejectRegistration'])->name('customers.reject');
         Route::post('customers/{customer}/verify-kyc', [CustomerController::class, 'verifyKyc'])->name('customers.verify-kyc');
+        Route::delete('customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
 
         Route::post('kyc-documents/{document}/approve', [KycDocumentController::class, 'approve'])->name('kyc.approve');
         Route::post('kyc-documents/{document}/reject', [KycDocumentController::class, 'reject'])->name('kyc.reject');

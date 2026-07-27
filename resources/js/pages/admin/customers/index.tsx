@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import type { Paginated } from '@/types/pagination';
 import { Head, Link, router } from '@inertiajs/react';
+import { CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface CustomerRow {
@@ -30,6 +31,15 @@ export default function CustomersIndex({ customers, filters }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const apply = (patch: Record<string, string>) =>
         router.get('/admin/customers', { ...filters, ...patch }, { preserveState: true, replace: true });
+
+    const approve = (c: CustomerRow) =>
+        router.post(`/admin/customers/${c.id}/approve`, {}, { preserveScroll: true });
+
+    const remove = (c: CustomerRow) => {
+        if (confirm(`Delete customer "${c.name}"? This can't be undone from the UI.`)) {
+            router.delete(`/admin/customers/${c.id}`, { preserveScroll: true });
+        }
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -70,11 +80,12 @@ export default function CustomersIndex({ customers, filters }: Props) {
                                         <th className="py-2 pr-4 font-medium">Code</th>
                                         <th className="py-2 pr-4 font-medium">Registration</th>
                                         <th className="py-2 pr-4 font-medium">KYC</th>
+                                        <th className="py-2 pr-4 text-right font-medium">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {customers.data.length === 0 ? (
-                                        <tr><td colSpan={4} className="py-8 text-center text-muted-foreground">No customers found.</td></tr>
+                                        <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">No customers found.</td></tr>
                                     ) : (
                                         customers.data.map((c) => (
                                             <tr key={c.id} className="border-b last:border-0 hover:bg-muted/40">
@@ -85,6 +96,35 @@ export default function CustomersIndex({ customers, filters }: Props) {
                                                 <td className="py-3 pr-4">{c.customerCode ?? '—'}</td>
                                                 <td className="py-3 pr-4"><StatusBadge status={c.registrationStatus} /></td>
                                                 <td className="py-3 pr-4"><StatusBadge status={c.kycStatus} /></td>
+                                                <td className="py-3 pr-4">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {c.registrationStatus === 'pending' && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => approve(c)}
+                                                                title="Approve registration"
+                                                                className="inline-flex items-center gap-1 rounded-md bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-600/20"
+                                                            >
+                                                                <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                                                            </button>
+                                                        )}
+                                                        <Link
+                                                            href={`/admin/customers/${c.id}`}
+                                                            title="View / manage"
+                                                            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Link>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => remove(c)}
+                                                            title="Delete customer"
+                                                            className="rounded-md p-1.5 text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         ))
                                     )}

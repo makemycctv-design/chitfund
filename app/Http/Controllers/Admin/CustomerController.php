@@ -166,4 +166,26 @@ class CustomerController extends Controller
 
         return back()->with('success', 'KYC verified.');
     }
+
+    /** Soft-delete a customer (preserves financial/audit history). */
+    public function destroy(Request $request, User $customer): RedirectResponse
+    {
+        abort_unless($request->user()->can('customers.manage'), 403);
+        abort_unless(
+            $customer->isCustomer() && $customer->company_id === (int) $request->user()->company_id,
+            403,
+        );
+
+        // Guard: don't remove a customer who is actively enrolled in a chitty.
+        if ($customer->memberships()->where('status', 'active')->exists()) {
+            return back()->with('error', 'Cannot delete a customer with active chitty memberships.');
+        }
+
+        $customer->delete(); // soft delete (User uses SoftDeletes)
+
+        activity('customer')->performedOn($customer)->causedBy($request->user())
+            ->log('Customer deleted');
+
+        return back()->with('success', 'Customer removed.');
+    }
 }
