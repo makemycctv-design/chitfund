@@ -28,6 +28,13 @@ interface PaymentGateway
     public function verifySignature(string $payload, string $signature): bool;
 
     /**
+     * Verify a client-side checkout signature (returned to the browser after
+     * the customer completes payment). Providers without a browser checkout
+     * flow return false.
+     */
+    public function verifyCheckoutSignature(string $orderId, string $paymentId, string $signature): bool;
+
+    /**
      * Normalize a raw webhook payload into a provider-agnostic shape.
      *
      * @param  array<string, mixed>  $payload

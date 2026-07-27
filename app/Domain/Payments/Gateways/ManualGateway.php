@@ -26,6 +26,11 @@ class ManualGateway implements PaymentGateway
         return false; // manual gateway never receives webhooks
     }
 
+    public function verifyCheckoutSignature(string $orderId, string $paymentId, string $signature): bool
+    {
+        return false; // manual gateway has no browser checkout flow
+    }
+
     public function parseWebhook(array $payload): array
     {
         return [

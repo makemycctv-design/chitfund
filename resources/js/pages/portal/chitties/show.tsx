@@ -3,10 +3,12 @@ import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { payInstallmentOnline } from '@/lib/razorpay';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { CircleDollarSign, Wallet } from 'lucide-react';
+import { useState } from 'react';
 
 interface Installment {
     id: string;
@@ -41,8 +43,19 @@ export default function PortalChittyShow({ chitty, installments, totalOutstandin
         { title: chitty.code, href: `/portal/chitties/${chitty.id}` },
     ];
 
+    const [payingId, setPayingId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
     const pay = (installmentId: string) => {
-        router.post('/portal/payments/initiate', { installment_id: installmentId, method: 'upi' }, { preserveScroll: true });
+        setError(null);
+        setPayingId(installmentId);
+        void payInstallmentOnline(installmentId, {
+            onError: (message) => {
+                setError(message);
+                setPayingId(null);
+            },
+            onSettled: () => setPayingId(null),
+        });
     };
 
     return (
@@ -59,6 +72,12 @@ export default function PortalChittyShow({ chitty, installments, totalOutstandin
                     <StatCard title="Total Outstanding" value={formatCurrency(totalOutstanding)} icon={CircleDollarSign} accent={totalOutstanding > 0 ? 'amber' : 'emerald'} />
                     <StatCard title="Maturity" value={formatDate(chitty.maturityDate)} />
                 </div>
+
+                {error && (
+                    <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                        {error}
+                    </div>
+                )}
 
                 <Card>
                     <CardHeader><CardTitle>Installment Ledger</CardTitle></CardHeader>
@@ -90,8 +109,8 @@ export default function PortalChittyShow({ chitty, installments, totalOutstandin
                                                 <td className="py-2 pr-4"><StatusBadge status={i.status} /></td>
                                                 <td className="py-2 pr-4 text-right">
                                                     {i.isPayable && (
-                                                        <Button size="sm" onClick={() => pay(i.id)}>
-                                                            Pay {formatCurrency(i.outstanding)}
+                                                        <Button size="sm" onClick={() => pay(i.id)} disabled={payingId !== null}>
+                                                            {payingId === i.id ? 'Processing…' : `Pay ${formatCurrency(i.outstanding)}`}
                                                         </Button>
                                                     )}
                                                 </td>

@@ -162,6 +162,8 @@ Route::middleware(['auth', 'user.type:customer'])
 
         Route::get('payments', [PortalPaymentController::class, 'history'])->name('payments.history');
         Route::post('payments/initiate', [PortalPaymentController::class, 'initiate'])->name('payments.initiate');
+        Route::post('payments/checkout', [PortalPaymentController::class, 'checkout'])->name('payments.checkout');
+        Route::post('payments/verify', [PortalPaymentController::class, 'verify'])->name('payments.verify');
         Route::get('receipts/{receipt}', [PortalPaymentController::class, 'receipt'])->name('receipts.download');
 
         // Auctions (live bidding)
