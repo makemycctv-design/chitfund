@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Enums\KycDocumentType;
+use App\Enums\KycStatus;
+use App\Enums\RegistrationStatus;
 use App\Http\Controllers\Controller;
+use App\Models\CustomerProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,7 +21,7 @@ class ProfileController extends Controller
     public function show(Request $request): Response
     {
         $user = $request->user();
-        $profile = $user->customerProfile()->firstOrCreate(['company_id' => $user->company_id]);
+        $profile = $this->profileFor($user);
 
         $user->load([
             'kycDocuments' => fn ($q) => $q->latest(),
@@ -27,8 +30,8 @@ class ProfileController extends Controller
 
         return Inertia::render('portal/profile', [
             'profile' => [
-                'registrationStatus' => $profile->registration_status->value,
-                'kycStatus' => $profile->kyc_status->value,
+                'registrationStatus' => $profile->registration_status?->value,
+                'kycStatus' => $profile->kyc_status?->value,
                 'kycLevel' => $profile->kyc_level,
                 'dateOfBirth' => $profile->date_of_birth?->toDateString(),
                 'gender' => $profile->gender,
@@ -68,7 +71,7 @@ class ProfileController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $profile = $user->customerProfile()->firstOrCreate(['company_id' => $user->company_id]);
+        $profile = $this->profileFor($user);
 
         $validated = $request->validate([
             'date_of_birth' => ['nullable', 'date', 'before:today'],
@@ -84,5 +87,21 @@ class ProfileController extends Controller
         $profile->update($validated);
 
         return back()->with('success', 'Profile updated.');
+    }
+
+    /**
+     * Fetch (or create) the customer's profile, ensuring status columns are
+     * always populated even for a freshly-created row.
+     */
+    private function profileFor($user): CustomerProfile
+    {
+        return $user->customerProfile()->firstOrCreate(
+            ['company_id' => $user->company_id],
+            [
+                'registration_status' => RegistrationStatus::Pending->value,
+                'kyc_status' => KycStatus::Pending->value,
+                'kyc_level' => 0,
+            ],
+        );
     }
 }
