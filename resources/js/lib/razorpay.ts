@@ -21,6 +21,14 @@ interface RazorpaySuccess {
     razorpay_signature: string;
 }
 
+interface RazorpayConfig {
+    display: {
+        blocks: Record<string, { name: string; instruments: Array<{ method: string; apps?: string[] }> }>;
+        sequence: string[];
+        preferences: { show_default_blocks: boolean };
+    };
+}
+
 interface RazorpayOptions {
     key: string;
     order_id: string;
@@ -30,9 +38,28 @@ interface RazorpayOptions {
     description?: string;
     prefill?: { name?: string; email?: string; contact?: string };
     theme?: { color?: string };
+    config?: RazorpayConfig;
     handler: (response: RazorpaySuccess) => void;
     modal?: { ondismiss?: () => void };
 }
+
+/**
+ * Razorpay Checkout config that pins a "Pay using Google Pay" block (UPI app)
+ * to the top of the payment list, while still keeping the default methods
+ * available below it.
+ */
+const GOOGLE_PAY_CONFIG: RazorpayConfig = {
+    display: {
+        blocks: {
+            gpay: {
+                name: 'Pay using Google Pay',
+                instruments: [{ method: 'upi', apps: ['google_pay'] }],
+            },
+        },
+        sequence: ['block.gpay'],
+        preferences: { show_default_blocks: true },
+    },
+};
 
 interface RazorpayInstance {
     open: () => void;
@@ -72,7 +99,12 @@ function loadRazorpayScript(): Promise<boolean> {
  */
 export async function payInstallmentOnline(
     installmentId: string,
-    options: { onError?: (message: string) => void; onStart?: () => void; onSettled?: () => void } = {},
+    options: {
+        onError?: (message: string) => void;
+        onStart?: () => void;
+        onSettled?: () => void;
+        preferGooglePay?: boolean;
+    } = {},
 ): Promise<void> {
     const res = await fetch('/portal/payments/checkout', {
         method: 'POST',
@@ -118,6 +150,7 @@ export async function payInstallmentOnline(
             contact: data.contact ?? undefined,
         },
         theme: { color: '#2563eb' },
+        ...(options.preferGooglePay ? { config: GOOGLE_PAY_CONFIG } : {}),
         handler: (response) => {
             options.onStart?.();
             router.post(

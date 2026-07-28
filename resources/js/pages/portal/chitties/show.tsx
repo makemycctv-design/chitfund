@@ -10,6 +10,18 @@ import { Head } from '@inertiajs/react';
 import { CircleDollarSign, Wallet } from 'lucide-react';
 import { useState } from 'react';
 
+/** Google's four-colour "G" mark, rendered inline so we avoid an extra asset. */
+function GooglePayMark({ className }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+            <path fill="#4285F4" d="M23.04 12.26c0-.82-.07-1.6-.21-2.36H12v4.47h6.19a5.3 5.3 0 0 1-2.29 3.48v2.9h3.7c2.17-2 3.44-4.94 3.44-8.49Z" />
+            <path fill="#34A853" d="M12 24c3.1 0 5.7-1.03 7.6-2.79l-3.7-2.9c-1.03.69-2.35 1.1-3.9 1.1-3 0-5.53-2.03-6.44-4.75H1.72v2.98A11.99 11.99 0 0 0 12 24Z" />
+            <path fill="#FBBC05" d="M5.56 14.66a7.2 7.2 0 0 1 0-4.6V7.08H1.72a12 12 0 0 0 0 10.56l3.84-2.98Z" />
+            <path fill="#EA4335" d="M12 4.75c1.69 0 3.2.58 4.4 1.72l3.28-3.28C17.7 1.2 15.1 0 12 0A11.99 11.99 0 0 0 1.72 7.08l3.84 2.98C6.47 6.78 9 4.75 12 4.75Z" />
+        </svg>
+    );
+}
+
 interface Installment {
     id: string;
     periodNo: number;
@@ -46,10 +58,14 @@ export default function PortalChittyShow({ chitty, installments, totalOutstandin
     const [payingId, setPayingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const pay = (installmentId: string) => {
+    // The "next installment" is the earliest payable row; it gets the Google Pay shortcut.
+    const nextPayableId = installments.find((i) => i.isPayable)?.id ?? null;
+
+    const pay = (installmentId: string, preferGooglePay = false) => {
         setError(null);
         setPayingId(installmentId);
         void payInstallmentOnline(installmentId, {
+            preferGooglePay,
             onError: (message) => {
                 setError(message);
                 setPayingId(null);
@@ -107,11 +123,24 @@ export default function PortalChittyShow({ chitty, installments, totalOutstandin
                                                 <td className="py-2 pr-4">{i.lateFee > 0 ? formatCurrency(i.lateFee) : '—'}</td>
                                                 <td className="py-2 pr-4">{formatCurrency(i.amountPaid)}</td>
                                                 <td className="py-2 pr-4"><StatusBadge status={i.status} /></td>
-                                                <td className="py-2 pr-4 text-right">
+                                                <td className="py-2 pr-4">
                                                     {i.isPayable && (
-                                                        <Button size="sm" onClick={() => pay(i.id)} disabled={payingId !== null}>
-                                                            {payingId === i.id ? 'Processing…' : `Pay ${formatCurrency(i.outstanding)}`}
-                                                        </Button>
+                                                        <div className="flex justify-end gap-2">
+                                                            {i.id === nextPayableId && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => pay(i.id, true)}
+                                                                    disabled={payingId !== null}
+                                                                >
+                                                                    <GooglePayMark className="mr-1.5 h-4 w-4" />
+                                                                    {payingId === i.id ? 'Processing…' : 'Google Pay'}
+                                                                </Button>
+                                                            )}
+                                                            <Button size="sm" onClick={() => pay(i.id)} disabled={payingId !== null}>
+                                                                {payingId === i.id ? 'Processing…' : `Pay ${formatCurrency(i.outstanding)}`}
+                                                            </Button>
+                                                        </div>
                                                     )}
                                                 </td>
                                             </tr>
