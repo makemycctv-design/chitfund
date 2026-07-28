@@ -33,10 +33,14 @@ class ChittyController extends Controller
     {
         $this->authorize('viewAny', Chitty::class);
 
+        $branchScope = $request->user()->branchScopeId();
+
         $chitties = Chitty::query()
             ->where('company_id', $this->companyId($request))
             ->with('branch:id,name,code')
             ->withCount('memberships')
+            // Branch-scoped staff only ever see chitties for their own branch.
+            ->when($branchScope !== null, fn ($q) => $q->where('branch_id', $branchScope))
             ->when($request->string('search')->toString(), fn ($q, $s) => $q->where(
                 fn ($q) => $q->where('name', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%")
             ))
@@ -79,7 +83,15 @@ class ChittyController extends Controller
 
     public function store(StoreChittyRequest $request): RedirectResponse
     {
-        $chitty = new Chitty($request->validated());
+        $data = $request->validated();
+
+        // Branch-scoped staff can only create chitties under their own branch;
+        // ignore any submitted branch_id and force their branch.
+        if ($request->user()->branchScopeId() !== null) {
+            $data['branch_id'] = $request->user()->branch_id;
+        }
+
+        $chitty = new Chitty($data);
         $chitty->company_id = $this->companyId($request);
         $chitty->created_by = $request->user()->id;
         $chitty->status = ChittyStatus::Draft->value;
@@ -282,8 +294,12 @@ class ChittyController extends Controller
 
     private function branchOptions(Request $request): array
     {
+        $branchScope = $request->user()->branchScopeId();
+
         return Branch::where('company_id', $this->companyId($request))
             ->where('is_active', true)
+            // Branch-scoped staff may only assign chitties to their own branch.
+            ->when($branchScope !== null, fn ($q) => $q->where('id', $branchScope))
             ->orderBy('name')
             ->get(['id', 'name', 'code'])
             ->map(fn ($b) => ['value' => $b->id, 'label' => "{$b->name} ({$b->code})"])

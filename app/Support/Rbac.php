@@ -127,12 +127,14 @@ class Rbac
         $all = static::allPermissions();
 
         return [
+            // Scheme management (chitty-schemes.manage) is reserved for the
+            // Super Admin only; no other role receives it.
             self::SUPER_ADMIN => $all,
-            self::COMPANY_OWNER => array_values(array_diff($all, ['companies.manage'])),
+            self::COMPANY_OWNER => array_values(array_diff($all, ['companies.manage', 'chitty-schemes.manage'])),
             self::BRANCH_MANAGER => [
                 'branches.manage', 'staff.view',
                 'customers.view', 'customers.manage', 'customers.approve-registration', 'kyc.verify',
-                'chitties.view', 'chitties.create', 'chitties.edit', 'chitty-schemes.manage',
+                'chitties.view', 'chitties.create', 'chitties.edit',
                 'members.enroll', 'installments.generate',
                 'collections.record', 'reconciliation.approve', 'reports.view', 'reports.export',
                 'auctions.start', 'auctions.pause', 'auctions.resume', 'auctions.close',
@@ -140,7 +142,7 @@ class Rbac
             ],
             self::CHITTY_MANAGER => [
                 'customers.view', 'chitties.view', 'chitties.create', 'chitties.edit',
-                'chitty-schemes.manage', 'members.enroll', 'installments.generate',
+                'members.enroll', 'installments.generate',
                 'reports.view',
             ],
             self::ACCOUNTANT => [

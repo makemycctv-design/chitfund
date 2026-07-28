@@ -37,13 +37,17 @@ class Phase2SmokeTest extends TestCase
         $get('/admin/chitties/create');
         $get("/admin/chitties/{$chitty->ulid}");
         $get("/admin/chitties/{$chitty->ulid}/edit");
-        $get('/admin/schemes');
         $get('/admin/customers');
         $get("/admin/customers/{$customer->ulid}");
         $get('/admin/collections');
         $get('/admin/reconciliation');
         $get('/admin/reports/collections');
         $get('/admin/reports/overdue');
+
+        // Scheme management is Super Admin only.
+        $superAdmin = $this->makeStaff($company, \App\Support\Rbac::SUPER_ADMIN);
+        $this->actingAs($superAdmin)->get('/admin/schemes')->assertOk();
+        $this->actingAs($staff)->get('/admin/schemes')->assertForbidden();
     }
 
     public function test_portal_pages_render(): void

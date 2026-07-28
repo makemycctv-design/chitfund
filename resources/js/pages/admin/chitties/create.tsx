@@ -66,6 +66,8 @@ export default function CreateChitty({ branches, schemes }: Props) {
     } = useForm<FormValues>({
         resolver: zodResolver(schema),
         defaultValues: {
+            // Branch-scoped staff only ever get their own branch as an option.
+            branch_id: branches.length === 1 ? Number(branches[0].value) : undefined,
             auction_frequency: 'monthly',
             late_fee_type: 'percent',
             late_fee_value: 2,

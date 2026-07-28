@@ -23,9 +23,13 @@ class CustomerController extends Controller
     {
         $this->authorize('viewAny', CustomerProfile::class);
 
+        $branchScope = $request->user()->branchScopeId();
+
         $customers = User::query()
             ->where('company_id', $this->companyId($request))
             ->where('type', 'customer')
+            // Branch-scoped staff only see customers belonging to their branch.
+            ->when($branchScope !== null, fn ($q) => $q->where('branch_id', $branchScope))
             ->with('customerProfile:id,user_id,customer_code,registration_status,kyc_status,kyc_level')
             ->when($request->string('search')->toString(), fn ($q, $s) => $q->where(
                 fn ($q) => $q->where('name', 'like', "%{$s}%")
@@ -175,6 +179,10 @@ class CustomerController extends Controller
             $customer->isCustomer() && $customer->company_id === (int) $request->user()->company_id,
             403,
         );
+
+        // Branch-scoped staff may only remove customers of their own branch.
+        $branchScope = $request->user()->branchScopeId();
+        abort_unless($branchScope === null || $customer->branch_id === $branchScope, 403);
 
         // Guard: don't remove a customer who is actively enrolled in a chitty.
         if ($customer->memberships()->where('status', 'active')->exists()) {

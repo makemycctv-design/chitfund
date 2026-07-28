@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\UserType;
 use App\Models\Concerns\HasUlid;
+use App\Support\Rbac;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -141,6 +142,32 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isCustomer(): bool
     {
         return $this->type === UserType::Customer;
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole(Rbac::SUPER_ADMIN);
+    }
+
+    /**
+     * Whether this user operates company-wide rather than being confined to a
+     * single branch. Super Admins and Company Owners see/manage every branch;
+     * all other staff roles are branch-scoped to their own branch_id.
+     */
+    public function actsAcrossBranches(): bool
+    {
+        return $this->hasRole(Rbac::SUPER_ADMIN) || $this->hasRole(Rbac::COMPANY_OWNER);
+    }
+
+    /**
+     * The branch id this user's queries/authorization must be restricted to,
+     * or null when the user is unrestricted (company-wide). A branch-scoped
+     * user with no branch assigned yields their (possibly null) branch_id,
+     * which safely matches nothing until an admin assigns them a branch.
+     */
+    public function branchScopeId(): ?int
+    {
+        return $this->actsAcrossBranches() ? null : $this->branch_id;
     }
 
     /**

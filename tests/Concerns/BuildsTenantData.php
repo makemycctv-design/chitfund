@@ -30,22 +30,29 @@ trait BuildsTenantData
         return Company::factory()->create();
     }
 
-    protected function makeStaff(Company $company, string $role = Rbac::COMPANY_OWNER): User
+    protected function makeStaff(Company $company, string $role = Rbac::COMPANY_OWNER, ?Branch $branch = null): User
     {
-        $user = User::factory()->staff()->create(['company_id' => $company->id]);
+        $user = User::factory()->staff()->create([
+            'company_id' => $company->id,
+            'branch_id' => $branch?->id,
+        ]);
         $user->assignRole($role);
 
         return $user;
     }
 
-    protected function makeCustomer(Company $company, bool $verified = true): User
+    protected function makeCustomer(Company $company, bool $verified = true, ?Branch $branch = null): User
     {
-        $user = User::factory()->customer()->create(['company_id' => $company->id]);
+        $user = User::factory()->customer()->create([
+            'company_id' => $company->id,
+            'branch_id' => $branch?->id,
+        ]);
         $user->assignRole(Rbac::CUSTOMER);
 
         CustomerProfile::factory()->create([
             'user_id' => $user->id,
             'company_id' => $company->id,
+            'branch_id' => $branch?->id,
             'kyc_status' => $verified ? KycStatus::Verified->value : KycStatus::Pending->value,
             'kyc_level' => $verified ? 1 : 0,
         ]);

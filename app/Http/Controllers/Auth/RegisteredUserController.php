@@ -25,7 +25,22 @@ class RegisteredUserController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('auth/register');
+        $company = Company::query()->orderBy('id')->first();
+
+        // Offer the default company's active branches so the customer can pick
+        // the branch that will handle their registration/approval.
+        $branches = $company
+            ? \App\Models\Branch::where('company_id', $company->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'code'])
+                ->map(fn ($b) => ['value' => $b->id, 'label' => "{$b->name} ({$b->code})"])
+                ->all()
+            : [];
+
+        return Inertia::render('auth/register', [
+            'branches' => $branches,
+        ]);
     }
 
     /**
@@ -35,19 +50,32 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Public self-registration always creates a customer/subscriber attached
+        // to the default (first) company. Registration begins in a "pending"
+        // state and must be approved by that branch's staff before enrollment.
+        $company = Company::query()->orderBy('id')->first();
+
+        // The branch is required whenever the company has active branches, so
+        // every new customer is owned by exactly one branch for approval.
+        $hasBranches = $company
+            && \App\Models\Branch::where('company_id', $company->id)->where('is_active', true)->exists();
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'phone' => ['nullable', 'string', 'max:20', 'unique:'.User::class.',phone'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'branch_id' => [
+                $hasBranches ? 'required' : 'nullable',
+                \Illuminate\Validation\Rule::exists('branches', 'id')
+                    ->where('company_id', $company?->id)
+                    ->where('is_active', true),
+            ],
         ]);
 
-        // Public self-registration always creates a customer/subscriber attached
-        // to the default (first) company. Registration begins in a "pending"
-        // state and must be approved by staff before enrollment (Phase 2).
-        $company = Company::query()->orderBy('id')->first();
-
         $user = DB::transaction(function () use ($validated, $company) {
+            $branchId = $validated['branch_id'] ?? null;
+
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -55,6 +83,7 @@ class RegisteredUserController extends Controller
                 'password' => Hash::make($validated['password']),
                 'type' => UserType::Customer->value,
                 'company_id' => $company?->id,
+                'branch_id' => $branchId,
                 'is_active' => true,
             ]);
 
@@ -64,6 +93,7 @@ class RegisteredUserController extends Controller
                 CustomerProfile::create([
                     'user_id' => $user->id,
                     'company_id' => $company->id,
+                    'branch_id' => $branchId,
                 ]);
             }
 

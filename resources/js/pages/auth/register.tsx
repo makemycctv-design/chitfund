@@ -9,20 +9,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 
+interface BranchOption {
+    value: number;
+    label: string;
+}
+
+interface Props {
+    branches?: BranchOption[];
+}
+
 interface RegisterForm {
     name: string;
     email: string;
     password: string;
     password_confirmation: string;
+    branch_id: string;
     [key: string]: string;
 }
 
-export default function Register() {
+export default function Register({ branches = [] }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm<RegisterForm>({
         name: '',
         email: '',
         password: '',
         password_confirmation: '',
+        branch_id: branches.length === 1 ? String(branches[0].value) : '',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -69,6 +80,29 @@ export default function Register() {
                         />
                         <InputError message={errors.email} />
                     </div>
+
+                    {branches.length > 0 && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="branch_id">Branch</Label>
+                            <select
+                                id="branch_id"
+                                required
+                                tabIndex={3}
+                                value={data.branch_id}
+                                onChange={(e) => setData('branch_id', e.target.value)}
+                                disabled={processing}
+                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">— Select your branch —</option>
+                                {branches.map((b) => (
+                                    <option key={b.value} value={b.value}>
+                                        {b.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branch_id} />
+                        </div>
+                    )}
 
                     <div className="grid gap-2">
                         <Label htmlFor="password">Password</Label>
