@@ -56,6 +56,7 @@ class DashboardController extends Controller
         $nextDue = $outstanding->first();
         $nextDueAmount = $nextDue ? (float) $nextDue->outstanding() : 0.0;
         $nextDueDate = $nextDue?->due_date?->toDateString();
+        $nextDueInstallmentId = $nextDue?->ulid;
 
         $overdueAmount = (float) $outstanding
             ->filter(fn (InstallmentPayment $p) => $p->due_date?->isPast())
@@ -68,6 +69,7 @@ class DashboardController extends Controller
                 'activeChittyCount' => $activeChitties->count(),
                 'nextDueAmount' => $nextDueAmount,
                 'nextDueDate' => $nextDueDate ?? $upcomingAuction,
+                'nextDueInstallmentId' => $nextDueInstallmentId,
                 'overdueAmount' => $overdueAmount,
                 'upcomingAuctionDate' => $upcomingAuction,
                 'registrationStatus' => $profile?->registration_status?->value,
